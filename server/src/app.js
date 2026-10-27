@@ -47,7 +47,9 @@ app.options("*", cors());
 // requireSameOrigin ko cross-domain deployment me use na karein
 app.use(express.json({ limit: "20kb" }));
 app.use(cookieParser());
-
+// Dono routes define kar do taaki /health aur /api/health dono kaam karein
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/ai", requireAuth, rateLimit({ windowMs: 60_000, limit: 20 }), aiRoutes);
