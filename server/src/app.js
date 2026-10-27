@@ -14,12 +14,10 @@ import { errorHandler } from "./middleware/errorHandler.js";
 const app = express();
 app.disable("x-powered-by");
 
-// Security headers (cross-origin resource sharing allow karne ke liye)
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Allowed frontend domains
 const allowedOrigins = [
   "https://ai-vet-task.vercel.app",
   process.env.CLIENT_URL,
@@ -29,7 +27,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Postman ya server-to-server calls me origin undefined hota hai
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -41,21 +38,27 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// Pre-flight requests ke liye
 app.options("*", cors());
 
-// requireSameOrigin ko cross-domain deployment me use na karein
 app.use(express.json({ limit: "20kb" }));
 app.use(cookieParser());
-// Dono routes define kar do taaki /health aur /api/health dono kaam karein
+
+// Base health check
+app.get("/", (_req, res) => res.json({ status: "ok", message: "Server running" }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-app.use("/api/auth", authRoutes);
-app.use("/api/ai", requireAuth, rateLimit({ windowMs: 60_000, limit: 20 }), aiRoutes);
-app.use("/api/pets", requireAuth, petRoutes);
-app.use("/api/appointments", requireAuth, appointmentRoutes);
-app.use("/api/prescriptions", requireAuth, prescriptionRoutes);
+
+// Routes: Bina /api aur /api ke sath dono handle karo
+const router = express.Router();
+router.use("/auth", authRoutes);
+router.use("/ai", requireAuth, rateLimit({ windowMs: 60_000, limit: 20 }), aiRoutes);
+router.use("/pets", requireAuth, petRoutes);
+router.use("/appointments", requireAuth, appointmentRoutes);
+router.use("/prescriptions", requireAuth, prescriptionRoutes);
+
+// Yahan dono paths mount kar diye:
+app.use("/api", router); // local testing aur normal /api ke liye
+app.use("/", router);    // Vercel serverless strip ke liye
 
 app.use((_req, res) => res.status(404).json({ message: "Route not found" }));
 app.use(errorHandler);
