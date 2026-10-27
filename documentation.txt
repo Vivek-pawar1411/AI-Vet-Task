@@ -1,0 +1,461 @@
+AV VET
+PROJECT DOCUMENTATION
+=====================
+
+1. PROJECT SUMMARY
+------------------
+AV Vet is a MERN-style pet management web application. Pet owners can create
+an account, save pet profiles, schedule clinic appointments, keep health
+records, and ask an AI assistant for general pet-care information.
+
+The browser never receives OpenRouter or NVIDIA API secrets. The React client
+sends requests to the Express API, which reads provider secrets from the
+server's private environment file and calls the selected provider.
+
+Important medical limitation:
+The AI assistant is informational only. It cannot diagnose, prescribe, or
+replace a veterinarian. For an emergency such as breathing difficulty,
+collapse, seizures, or suspected poisoning, contact an emergency veterinarian.
+
+
+2. TECHNOLOGIES USED
+--------------------
+Frontend:
+- React 18 for the interface and reusable components.
+- Vite for local development and production builds.
+- React Router for the application routes.
+- Tailwind CSS directives plus project CSS for layout and styling.
+- Lucide React for icons.
+- Axios for API calls, including browser credentials/cookies.
+
+Backend:
+- Node.js with ES modules.
+- Express for REST API routes and middleware.
+- Mongoose for MongoDB models and database connections.
+- bcryptjs for password hashing.
+- JSON Web Tokens (JWT) stored in an HttpOnly session cookie.
+- Axios for server-to-server AI provider calls.
+- Helmet, CORS, same-origin checks, and express-rate-limit for basic security.
+- dotenv for loading server/.env.
+
+Database:
+- MongoDB stores users, pets, appointments, and prescription/health records.
+
+AI providers:
+- OpenRouter OpenAI-compatible API.
+- NVIDIA NIM OpenAI-compatible API.
+
+
+3. FOLDER AND FILE GUIDE
+------------------------
+client/
+  index.html
+    Browser document title and React root element.
+  src/main.jsx
+    Starts React, enables BrowserRouter, and loads the stylesheet.
+  src/App.jsx
+    Main application routes, navigation sidebar, profile and auth protection.
+  src/styles.css
+    Simple responsive interface styling and Tailwind directives.
+  src/context/AuthContext.jsx
+    Loads the signed-in user and handles sign-up, login, and logout state.
+  src/lib/api.js
+    Axios instance for the Express API and user-friendly request errors.
+  src/components/AuthPage.jsx
+    Account sign-up and login forms.
+  src/components/Dashboard.jsx
+    Overview of pets, upcoming appointments and health record counts.
+  src/components/ManagementPages.jsx
+    Pet CRUD, appointment forms/table, health record CRUD.
+  src/components/AssistantPage.jsx
+    Provider/model selection, pet context, question form and AI answer view.
+  src/components/Modal.jsx
+    Shared dialog used by management forms.
+
+server/
+  src/server.js
+    Loads environment variables, checks JWT secret, connects MongoDB, starts API.
+  src/app.js
+    Configures Express, Helmet, CORS, origin checks, JSON parsing and routes.
+  src/config/db.js
+    Connects Mongoose to the configured MongoDB URI.
+  src/models/User.js
+    User name, email and hashed password schema.
+  src/models/Pet.js
+    Owner-linked pet profile schema.
+  src/models/Appointment.js
+    Owner-linked appointment and status schema.
+  src/models/Prescription.js
+    Owner-linked medication/health record schema.
+  src/controllers/
+    Request handling for authentication, CRUD and AI inference.
+  src/routes/
+    Express endpoint definitions.
+  src/middleware/auth.js
+    Validates session JWT and loads the signed-in user.
+  src/middleware/requireSameOrigin.js
+    Rejects browser mutation requests from a different origin.
+  src/middleware/errorHandler.js
+    Returns API errors in a consistent JSON shape.
+  src/utils/
+    Async error wrapper, application error class and safe update-field picker.
+
+Configuration:
+  server/.env.example
+    Safe template for backend configuration. Copy to server/.env and edit locally.
+  client/.env.example
+    Client API URL template.
+  README.md
+    Setup, API, sample walkthrough, security, and feature notes.
+
+
+4. WHAT EACH FEATURE DOES
+-------------------------
+SIGN UP AND LOGIN
+- Register with a name, email address, and password at least 8 characters long.
+- The server hashes passwords with bcryptjs before storage.
+- Successful sign-up/login sets an HttpOnly cookie named "session".
+- The browser sends the cookie with Axios requests.
+- The frontend checks /api/auth/me to restore a logged-in session.
+- The login/signup endpoints have a rate limiter.
+
+PET PROFILES
+- Create, list, edit and delete pets owned by the signed-in user.
+- Fields: name, species, breed, age in years, weight in kilograms, medical notes.
+- Supported species choices in the UI: Dog, Cat, Bird, Rabbit, Other.
+- The API filters records by owner so one account cannot access another's pets.
+
+APPOINTMENTS
+- Create, list, edit and delete appointments.
+- A valid pet owned by the signed-in user must be selected.
+- Fields: pet, clinic name, clinic address, date/time, reason, status.
+- New status defaults to "scheduled".
+- Database/API status values: scheduled, confirmed, completed, cancelled.
+- The current appointment form does not provide a status selector; new
+  appointments receive the scheduled default.
+
+HEALTH RECORDS
+- Add, list, update and remove a record associated with one of the owner's pets.
+- Fields: pet, medication/record title, dosage/summary, instructions,
+  prescribed by, date and optional expiry.
+- This is a record-keeping screen. It does not issue medical prescriptions.
+
+AI CARE ASSISTANT
+- Select OpenRouter or NVIDIA NIM.
+- Refresh reads the configured provider's model catalog; it does not send a
+  test prompt.
+- The UI displays no more than two catalog models. OpenRouter is filtered to
+  catalog models marked free and also offers the "openrouter/free" router.
+- NVIDIA options come from its model catalog.
+- Select a pet optionally; pet details are included with the question.
+- The API sends a system safety instruction and the question to the selected
+  model. It returns the generated text to the client.
+- Free model listings do not guarantee continued availability. Provider access,
+  model IDs, service load and request limits can change.
+- Provider keys are only read by the server.
+
+
+5. HOW A REQUEST FLOWS THROUGH THE APP
+--------------------------------------
+Example: adding a pet
+1. The owner fills out the pet form in the React client.
+2. Axios sends POST /api/pets and includes the HttpOnly session cookie.
+3. Express runs requireAuth, verifies the JWT, and loads the current user.
+4. The pet controller creates a Mongoose Pet with owner set to that user.
+5. MongoDB stores the record; Express returns the pet JSON.
+6. The React page refreshes its list and displays the saved pet.
+
+Example: asking AI for general guidance
+1. The owner selects a provider/model and enters a question.
+2. Axios sends POST /api/ai/chat with provider, model, symptoms, and optional
+   selected-pet context.
+3. Express authenticates the user and applies the AI rate limit.
+4. The AI controller validates the provider/model/question. For OpenRouter it
+   checks the model against the currently listed free-model shortlist.
+5. The server calls the provider's /chat/completions endpoint with the API key
+   from server/.env.
+6. The provider response is returned to the React client.
+7. Provider failure is returned as an error; the application must not treat a
+   fabricated fallback as a real AI response.
+
+
+6. INSTALLATION AND RUNNING ON WINDOWS
+--------------------------------------
+Prerequisites:
+- Node.js 20 or newer.
+- npm (installed with Node.js).
+- MongoDB Community Server running locally OR MongoDB Atlas credentials/URI.
+- OpenRouter and/or NVIDIA provider API key if testing that provider.
+
+STEP A: PREPARE THE SERVER ENV FILE
+Open PowerShell in the project root and run:
+
+  cd .\server
+  Copy-Item .env.example .env
+  notepad .env
+
+Set MONGODB_URI. For local MongoDB:
+
+  MONGODB_URI=mongodb://127.0.0.1:27017/ai-vet
+
+For MongoDB Atlas, use the URI from Atlas and replace its username, password,
+host and database with your own values locally. Do not paste the URI in chat.
+
+Generate a strong JWT secret:
+
+  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+Copy the output into JWT_SECRET in server/.env. This value must be at least
+32 characters. Keep the .env file private. The .env.example is only a template
+and must not contain real secrets.
+
+For AI features, add provider keys locally:
+
+  OPENROUTER_API_KEY=your-private-openrouter-key
+  NVIDIA_API_KEY=your-private-nvidia-key
+
+The shown text is a placeholder, not a real key. Never put keys in the client
+environment, source code, public repository, screenshot, or chat.
+
+Install and run the backend:
+
+  npm install
+  npm run dev
+
+Expected terminal messages:
+
+  Connected to MongoDB
+  AI Vet API listening on port 5000
+
+Check the API from another PowerShell terminal:
+
+  Invoke-RestMethod http://localhost:5000/api/health
+
+The response should contain status "ok".
+
+STEP B: START THE CLIENT IN A SECOND TERMINAL
+From the project root:
+
+  cd .\client
+  npm install
+  npm run dev
+
+Open the URL Vite prints, commonly:
+
+  http://localhost:5173
+
+Keep both terminals running. Stop a server with Ctrl+C.
+
+If frontend API URL needs changing, copy client/.env.example to client/.env,
+edit VITE_API_URL (normally http://localhost:5000/api), and restart Vite.
+
+
+7. WALKTHROUGH WITH DUMMY DATA
+------------------------------
+There are no seeded users. Create the demo account yourself on the sign-up
+screen. These are fictional sample values:
+
+SIGN-UP / LOGIN
+  Name: Jamie Example
+  Email: jamie.example@example.com
+  Password: DemoPass!2026
+
+Sign up with these values, then log out and log back in with the same email and
+password to test login. This is not a pre-created account.
+
+ADD A PET
+  Name: Maple
+  Species: Dog
+  Breed: Mixed breed
+  Age (years): 4
+  Weight (kg): 18
+  Medical notes: Demo only. No known allergies reported.
+
+Click My pets > Add a pet, enter the fields, and save. The pet appears in the
+pet list and dashboard count.
+
+ADD A CLINIC APPOINTMENT
+  Pet: Maple
+  Clinic name: Example Veterinary Clinic
+  Clinic address: 100 Sample Road, Example City
+  Date/time: Select a future date and time in the date picker.
+  Reason: Routine wellness check (demo)
+
+Click Appointments > Schedule a visit. New appointment status is scheduled.
+The appointment appears in the history table and, if its date is upcoming, on
+the dashboard.
+
+ADD A HEALTH RECORD
+  Pet: Maple
+  Medication / record title: Annual wellness visit (demo)
+  Dosage / summary: Routine check-up record
+  Prescribed by: Dr. Example
+  Date: Choose a date
+  Expires on: Leave blank
+  Instructions / notes: Demo record only; not a real prescription.
+
+Click Health records > Add a record and save. This is only a demo record; do
+not interpret it as a medical prescription.
+
+TEST THE AI ASSISTANT
+1. Click AI care assistant.
+2. Select OpenRouter or NVIDIA NIM.
+3. Wait for the model list to load, or press Refresh models.
+4. Pick one of the models actually shown for the selected provider.
+5. Optionally select Maple.
+6. Paste the safe fictional question below and submit:
+
+  This is a fictional test question, not a real emergency. Maple sneezed twice
+  today, is eating and drinking normally, and is acting as usual. What general
+  signs should an owner monitor, and when should they contact a veterinarian?
+
+AI requests use the provider account and its quota/rate limits. A catalog
+listing is not a promise that a model will always respond. HTTP 401/403 usually
+indicates credentials/access; 404/410 usually indicates a model/endpoint that
+is unavailable; 429 usually means a rate limit.
+
+
+8. API ENDPOINTS
+----------------
+All routes below are prefixed with http://localhost:5000.
+
+Public/auth:
+  GET    /api/health
+  POST   /api/auth/signup
+  POST   /api/auth/login
+  POST   /api/auth/logout
+  GET    /api/auth/me
+
+Authenticated pet records:
+  GET    /api/pets
+  POST   /api/pets
+  PATCH  /api/pets/:id
+  DELETE /api/pets/:id
+
+Authenticated appointments:
+  GET    /api/appointments
+  POST   /api/appointments
+  PATCH  /api/appointments/:id
+  DELETE /api/appointments/:id
+
+Authenticated health records:
+  GET    /api/prescriptions
+  POST   /api/prescriptions
+  PATCH  /api/prescriptions/:id
+  DELETE /api/prescriptions/:id
+
+Authenticated AI:
+  GET    /api/ai/models/openrouter
+  GET    /api/ai/models/nvidia
+  POST   /api/ai/chat
+
+AI chat request example (send as JSON after signing in):
+
+  {
+    "provider": "openrouter",
+    "model": "openrouter/free",
+    "symptoms": "Fictional test: a healthy dog sneezed twice. What general signs should be monitored?",
+    "pet": {
+      "name": "Maple",
+      "species": "Dog",
+      "breed": "Mixed breed",
+      "age": 4,
+      "weight": 18,
+      "medicalNotes": "Demo only."
+    }
+  }
+
+Use the exact model ID provided by the currently refreshed dropdown. The
+example model may not be available in every account or at every time.
+
+
+9. ENVIRONMENT VARIABLE REFERENCE
+---------------------------------
+Server variables (server/.env):
+  NODE_ENV
+    development locally; production sets secure session cookies.
+  PORT
+    API port; default is 5000.
+  CLIENT_URL
+    Exact allowed browser origin; local default is http://localhost:5173.
+  MONGODB_URI
+    Local MongoDB or Atlas database URI.
+  JWT_SECRET
+    Private random secret, at least 32 characters.
+  JWT_EXPIRES_IN
+    JWT expiry, default 7d.
+  OPENROUTER_API_KEY
+    Private OpenRouter key.
+  OPENROUTER_BASE_URL
+    Default https://openrouter.ai/api/v1.
+  NVIDIA_API_KEY
+    Private NVIDIA NIM key.
+  NVIDIA_BASE_URL
+    Default https://integrate.api.nvidia.com/v1.
+
+Client variable (client/.env):
+  VITE_API_URL
+    API base including /api; local default http://localhost:5000/api.
+
+Never define provider keys with VITE_ prefix because browser bundle variables
+are public.
+
+
+10. BASIC TROUBLESHOOTING
+-------------------------
+"Could not find package.json":
+  Run npm commands from the correct subfolder. Backend commands run in server;
+  frontend commands run in client.
+
+"JWT_SECRET must be set...":
+  Confirm server/.env exists (not only .env.example), the JWT_SECRET line has a
+  random value at least 32 characters long, and restart the API.
+
+"Failed to connect to MongoDB":
+  Start MongoDB Community Server or re-check the MongoDB Atlas URI and network
+  access. Do not share a URI containing credentials.
+
+AI 401/403:
+  Check that the selected provider's key is valid, active, and belongs to the
+  provider account configured in server/.env.
+
+AI 404/410:
+  Refresh the provider list and choose a currently listed model. Provider model
+  IDs change or may not be available to every key/account.
+
+AI 429:
+  Provider rate limit/quota was reached; wait and retry or review provider plan.
+
+Browser cannot reach the API:
+  Confirm both processes run, check VITE_API_URL and CLIENT_URL match the
+  browser origin, and verify GET /api/health.
+
+When requesting support, share only the error text/status and selected model
+ID. Never share .env contents, JWTs, passwords, MongoDB credentials or API keys.
+
+
+11. BUILD / SYNTAX CHECKS
+-------------------------
+Build frontend:
+  cd client
+  npm run build
+
+Check backend entry files:
+  cd server
+  npm run check
+
+The build output is written to client/dist. Do not edit generated dist files.
+
+
+12. PRODUCTION / PRIVACY NOTES
+------------------------------
+- Serve the app and API over HTTPS.
+- Use a hosted MongoDB deployment with access controls and backups.
+- Use a strong new JWT secret and rotate any credentials that were exposed.
+- Set CLIENT_URL to the exact production frontend origin.
+- Keep server/.env out of source control; .gitignore excludes .env files.
+- Provider questions and optional pet context are sent to the chosen AI
+  provider. Avoid including unnecessary personal or sensitive data.
+- Review privacy, retention, access control, backups, logging and security
+  requirements before entering real owner or veterinary records.
+- AI output can be inaccurate and must not be used as diagnosis or treatment.
