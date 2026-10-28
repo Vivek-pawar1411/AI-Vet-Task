@@ -3,12 +3,17 @@ import User from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-const cookieOptions = () => ({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "none",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-});
+const cookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+};
 
 function getJwtSecret() {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
@@ -55,7 +60,8 @@ export const logout = (_req, res) => {
   res.clearCookie("session", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "none",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
   });
   res.status(204).end();
 };
