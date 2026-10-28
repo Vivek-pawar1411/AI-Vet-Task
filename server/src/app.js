@@ -98,8 +98,10 @@ import petRoutes from "./routes/petRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import prescriptionRoutes from "./routes/prescriptionRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import { connectDatabase } from "./config/db.js";
 import { requireAuth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { AppError } from "./utils/AppError.js";
 
 const app = express();
 
@@ -144,6 +146,15 @@ app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
 // Routes
 const router = express.Router();
+router.use(async (_req, _res, next) => {
+  try {
+    await connectDatabase();
+    next();
+  } catch (error) {
+    console.error("Database connection failed:", error);
+    next(new AppError("Database service is unavailable", 503));
+  }
+});
 router.use("/auth", authRoutes);
 router.use("/ai", requireAuth, rateLimit({ windowMs: 60_000, limit: 20 }), aiRoutes);
 router.use("/pets", requireAuth, petRoutes);

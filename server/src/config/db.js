@@ -1,20 +1,28 @@
 import mongoose from "mongoose";
 
-export const connectDatabase = async () => {
-  try {
-    const uri =  process.env.MONGODB_URI;
-    
-    if (!uri) {
-      throw new Error("MongoDB URI is not defined in environment variables!");
-    }
+let connectionPromise;
 
-    const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 500000, // 30 sec ke bajaye 5 sec me detect karega
-      family: 4 // IPv4 force karega, IPv6 DNS lookup issue khatam hoga
+export const connectDatabase = async () => {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error("MongoDB URI is not defined in environment variables!");
+  }
+
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10000,
+      family: 4,
     });
+  }
+
+  const pendingConnection = connectionPromise;
+  try {
+    const conn = await pendingConnection;
     console.log(`MongoDB Connected successfully: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`MongoDB Connection Error: ${error.message}`);
-    process.exit(1); // Agar DB connect na ho toh server exit ho jaye taaki error seedha log me dikhe
+    return conn.connection;
+  } finally {
+    if (connectionPromise === pendingConnection) connectionPromise = undefined;
   }
 };
