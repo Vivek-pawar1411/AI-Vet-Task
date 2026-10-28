@@ -6,7 +6,7 @@ export function errorHandler(error, _req, res, _next) {
   const message = error.code === 11000
     ? "A record with these details already exists"
     : statusCode >= 500
-      ? "An unexpected server error occurred"
+      ? statusCode === 503 ? error.message : "An unexpected server error occurred"
       : error.message;
   res.status(statusCode).json({
     message,

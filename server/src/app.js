@@ -12,6 +12,7 @@ import prescriptionRoutes from "./routes/prescriptionRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import { requireAuth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { AppError } from "./utils/AppError.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -25,6 +26,7 @@ app.use(async (_req, _res, next) => {
       isDbConnected = true;
     } catch (err) {
       console.error("Database connection failed:", err);
+      return next(new AppError("Database service is unavailable", 503));
     }
   }
   next();

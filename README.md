@@ -103,7 +103,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL printed in the terminal (normally `http://localhost:5173`). If the API uses a different address, copy `client/.env.example` to `client/.env`, change `VITE_API_URL`, then restart Vite.
+Open the Vite URL printed in the terminal (normally `http://localhost:5173`). The Vite development server proxies `/api` requests to `http://localhost:5000`. If the API uses a different address, update the proxy in `client/vite.config.js` and restart Vite.
 
 ### 3. First account
 
@@ -193,7 +193,7 @@ See `server/.env.example` and `client/.env.example` for templates. Never commit 
 | `OPENROUTER_BASE_URL` | Server | Defaults to `https://openrouter.ai/api/v1` |
 | `NVIDIA_API_KEY` | Server | NVIDIA NIM secret (optional until NVIDIA is used) |
 | `NVIDIA_BASE_URL` | Server | Defaults to `https://integrate.api.nvidia.com/v1` |
-| `VITE_API_URL` | Client | API base URL including `/api`; defaults to `http://localhost:5000/api` |
+| `VITE_API_URL` | Client | API base URL including `/api`; defaults to the same-origin `/api` |
 
 Never put provider credentials in `client/.env` or a `VITE_*` variable: Vite variables are delivered to the browser. If a key or JWT secret is accidentally shared, revoke/rotate it.
 
@@ -237,4 +237,18 @@ cd ..\server
 npm run check
 ```
 
-For production, use HTTPS, a managed MongoDB deployment, a strong unique JWT secret, a precise `CLIENT_URL`, rotated provider keys, and secure hosting for the API. Configure cookies, trusted proxy/rate limits and operational monitoring for the actual deployment environment. This starter is not a substitute for a security/privacy review before handling real owner or animal health data.
+## Deploy to Vercel
+
+The repository root is configured as a single Vercel project: it builds the client and serves the Express API as a serverless function. In Vercel, import the repository and leave **Root Directory** set to the repository root; the build command and output directory are read from `vercel.json`.
+
+Before deploying, add these environment variables in the Vercel project settings for Production (and Preview if needed):
+
+- `MONGODB_URI`: a MongoDB Atlas connection string. In Atlas, create a database user and allow network access from Vercel (or configure Atlas network access appropriately for your plan).
+- `JWT_SECRET`: a unique random value of at least 32 characters. Generate one locally with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+- `NODE_ENV=production`
+- `CLIENT_URL=https://ai-vet-task.vercel.app` (the exact deployed site origin; update this if the Vercel domain changes).
+- Optional: `OPENROUTER_API_KEY` and/or `NVIDIA_API_KEY` for the AI assistant.
+
+Do not set a `VITE_API_URL` to localhost in Vercel. The client calls the same-origin `/api` route by default. After setting variables, redeploy so the serverless function receives them. Verify `https://ai-vet-task.vercel.app/api/health` returns `{"status":"ok"}`; account creation and sign-in also require a reachable MongoDB database.
+
+For production, use HTTPS, a managed MongoDB deployment, a strong unique JWT secret, rotated provider keys, and operational monitoring. This starter is not a substitute for a security/privacy review before handling real owner or animal health data.

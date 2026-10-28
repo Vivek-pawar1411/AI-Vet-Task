@@ -1,0 +1,12 @@
+{
+  "name": "ai-vet-task",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace client"
+  }
+}
