@@ -237,18 +237,16 @@ cd ..\server
 npm run check
 ```
 
-## Deploy to Vercel
+## Deploy to Render and Vercel
 
-The frontend and backend are separate Vercel projects. For the frontend project, set **Root Directory** to `client` (uses `client/vercel.json`) or the repository root (uses the root `vercel.json`). Both configurations proxy `/api/*` to the backend. The backend project uses `server` as its **Root Directory**; `server/api/[...path].js` exposes the Express API as a serverless function.
+Deploy the backend to Render as a **Web Service** with `server` as the Root Directory, `npm install` as the build command, and `npm start` as the start command. Set these environment variables in the Render service:
 
-Set these environment variables in the **backend** Vercel project for Production (and Preview if needed):
-
-- `MONGODB_URI`: a MongoDB Atlas connection string. In Atlas, create a database user and allow network access from Vercel (or configure Atlas network access appropriately for your plan).
+- `MONGODB_URI`: a MongoDB Atlas connection string. Create a database user and allow the Render service to connect in Atlas Network Access.
 - `JWT_SECRET`: a unique random value of at least 32 characters. Generate one locally with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
 - `NODE_ENV=production`
-- `CLIENT_URL=https://ai-vet-task.vercel.app` (the exact frontend origin).
+- `CLIENT_URL=https://ai-vet-task.vercel.app` (the frontend origin).
 - Optional: `OPENROUTER_API_KEY` and/or `NVIDIA_API_KEY` for the AI assistant.
 
-The frontend calls the same-origin `/api` path, which Vercel proxies to the matching route on `https://ai-vet-task-hpuu.vercel.app` (for example, `/api/auth/me` proxies to `/auth/me`). This avoids browser CORS and cross-site-cookie restrictions. Do not set `VITE_API_URL` to a backend URL or localhost in the frontend project. Deploy the backend project with `server` as its Root Directory first, then deploy the frontend. Verify `https://ai-vet-task-hpuu.vercel.app/health` and `https://ai-vet-task.vercel.app/api/health` both return `{"status":"ok"}`; account creation and sign-in also require a reachable MongoDB database.
+Deploy the frontend to Vercel with Root Directory `client` or the repository root. Both Vercel configurations proxy `/api/*` to the Render backend. The frontend defaults to the same-origin `/api` path; set `VITE_API_URL` only if you intentionally use a different API base URL. This proxy keeps session cookies same-origin. Verify `https://ai-vet-task-server.onrender.com/health` and `https://ai-vet-task.vercel.app/api/health` both return `{"status":"ok"}`. An unauthenticated request to `/api/auth/me` should return `401`; account creation and sign-in require a reachable MongoDB database.
 
 For production, use HTTPS, a managed MongoDB deployment, a strong unique JWT secret, rotated provider keys, and operational monitoring. This starter is not a substitute for a security/privacy review before handling real owner or animal health data.
