@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "destination": "https://ai-vet-task-hpuu.vercel.app/api/$1"
     },
     {
       "source": "/(.*)",

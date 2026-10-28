@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://ai-vet-task-hpuu.vercel.app/api",
+  baseURL: "/api",
   withCredentials: true,
   timeout: 30000,
 });
