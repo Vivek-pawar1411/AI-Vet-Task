@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL:"https://ai-vet-task-server.onrender.com",
   withCredentials: true,
   timeout: 30000,
 });
