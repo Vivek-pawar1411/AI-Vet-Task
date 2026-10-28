@@ -8,7 +8,10 @@ export const connectDatabase = async () => {
       throw new Error("MongoDB URI is not defined in environment variables!");
     }
 
-    const conn = await mongoose.connect(uri);
+    const conn = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000, // 30 sec ke bajaye 5 sec me detect karega
+      family: 4 // IPv4 force karega, IPv6 DNS lookup issue khatam hoga
+    });
     console.log(`MongoDB Connected successfully: ${conn.connection.host}`);
   } catch (error) {
     console.error(`MongoDB Connection Error: ${error.message}`);
