@@ -15,6 +15,8 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { AppError } from "./utils/AppError.js";
 
 const app = express();
+
+app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
 // 1. CORS SABSE PEHLE AAYEGA
