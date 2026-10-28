@@ -193,7 +193,7 @@ See `server/.env.example` and `client/.env.example` for templates. Never commit 
 | `OPENROUTER_BASE_URL` | Server | Defaults to `https://openrouter.ai/api/v1` |
 | `NVIDIA_API_KEY` | Server | NVIDIA NIM secret (optional until NVIDIA is used) |
 | `NVIDIA_BASE_URL` | Server | Defaults to `https://integrate.api.nvidia.com/v1` |
-| `VITE_API_URL` | Client | API base URL including `/api`; defaults to the same-origin `/api` |
+The client uses the same-origin `/api` path so the backend's HttpOnly session cookie works through the Vercel proxy. Do not configure a direct Render URL as the frontend API URL; cross-site cookie restrictions can prevent the browser from sending the session.
 
 Never put provider credentials in `client/.env` or a `VITE_*` variable: Vite variables are delivered to the browser. If a key or JWT secret is accidentally shared, revoke/rotate it.
 
@@ -247,6 +247,6 @@ Deploy the backend to Render as a **Web Service** with `server` as the Root Dire
 - `CLIENT_URL=https://ai-vet-task.vercel.app` (the frontend origin).
 - Optional: `OPENROUTER_API_KEY` and/or `NVIDIA_API_KEY` for the AI assistant.
 
-Deploy the frontend to Vercel with Root Directory `client` or the repository root. Both Vercel configurations proxy `/api/*` to the Render backend. The frontend defaults to the same-origin `/api` path; set `VITE_API_URL` only if you intentionally use a different API base URL. This proxy keeps session cookies same-origin. Verify `https://ai-vet-task-server.onrender.com/health` and `https://ai-vet-task.vercel.app/api/health` both return `{"status":"ok"}`. An unauthenticated request to `/api/auth/me` should return `401`; account creation and sign-in require a reachable MongoDB database.
+Deploy the frontend to Vercel with Root Directory `client` or the repository root. Both Vercel configurations proxy `/api/*` to the Render backend. The frontend uses the same-origin `/api` path; this proxy keeps the HttpOnly session cookie same-origin. Verify `https://ai-vet-task-server.onrender.com/health` and `https://ai-vet-task.vercel.app/api/health` both return `{"status":"ok"}`. An unauthenticated request to `/api/auth/me` should return `401`; after signing in, it should return the current user.
 
 For production, use HTTPS, a managed MongoDB deployment, a strong unique JWT secret, rotated provider keys, and operational monitoring. This starter is not a substitute for a security/privacy review before handling real owner or animal health data.
