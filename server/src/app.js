@@ -43,6 +43,7 @@ app.use(cors({
       !origin || 
       origin === "http://localhost:5173" ||
       origin === "http://localhost:3000" ||
+      origin ==="https://ai-vet-task.vercel.app" ||
       origin.endsWith(".vercel.app")
     ) {
       callback(null, true);
