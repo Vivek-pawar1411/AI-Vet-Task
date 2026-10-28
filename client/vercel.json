@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://ai-vet-task-hpuu.vercel.app/api/$1"
+      "destination": "https://ai-vet-task-hpuu.vercel.app/$1"
     },
     {
       "source": "/(.*)",
