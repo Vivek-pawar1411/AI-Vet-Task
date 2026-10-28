@@ -17,7 +17,38 @@ import { AppError } from "./utils/AppError.js";
 const app = express();
 app.disable("x-powered-by");
 
-// Vercel Serverless environment me database connect ensure karne ke liye middleware
+// 1. CORS SABSE PEHLE AAYEGA
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (
+      !origin || 
+      origin === "http://localhost:5173" ||
+      origin === "http://localhost:3000" ||
+      origin === "https://ai-vet-task.vercel.app" ||
+      origin.endsWith(".vercel.app")
+    ) {
+      callback(null, true);
+    } else {
+      callback(null, false); // Error throw karne ke bajaye false pass karein
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// 2. PARSERS
+app.use(express.json({ limit: "20kb" }));
+app.use(cookieParser());
+
+// 3. DATABASE CONNECTION MIDDLEWARE (CORS ke baad)
 let isDbConnected = false;
 app.use(async (_req, _res, next) => {
   if (!isDbConnected) {
@@ -32,41 +63,12 @@ app.use(async (_req, _res, next) => {
   next();
 });
 
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
-// CORS setup: Sabhi Vercel preview aur live domains allow karega
-app.use(cors({
-  origin: function (origin, callback) {
-    if (
-      !origin || 
-      origin === "http://localhost:5173" ||
-      origin === "http://localhost:3000" ||
-      origin ==="https://ai-vet-task.vercel.app" ||
-      origin.endsWith(".vercel.app")
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS blocked this origin: " + origin));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-
-app.options("*", cors());
-
-app.use(express.json({ limit: "20kb" }));
-app.use(cookieParser());
-
 // Base health routes
 app.get("/", (_req, res) => res.json({ status: "ok", message: "Server running" }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
-// Routes: /api aur root dono handle karega
+// Routes
 const router = express.Router();
 router.use("/auth", authRoutes);
 router.use("/ai", requireAuth, rateLimit({ windowMs: 60_000, limit: 20 }), aiRoutes);
